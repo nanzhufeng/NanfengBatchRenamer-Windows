@@ -1,6 +1,8 @@
 # 南枫批量改名
 
-这是一个 Windows 批量改名工具。当前版本重点是安全预览、冲突检查、点击复制、拖动多选，以及最近一次改名撤销。
+这是一个 Windows 批量改名工具。当前版本重点是安全预览、事务式批量执行、冲突检查、点击复制、拖动多选，以及最近一次改名撤销。
+
+开发上下文、技术栈和目录结构见 [`docs/context.md`](docs/context.md)；稳定业务规则见 [`docs/domain-rules.md`](docs/domain-rules.md)；当前验证与遗留风险见 [`docs/CURRENT_HANDOFF.md`](docs/CURRENT_HANDOFF.md)。
 
 平台说明：本仓库和 Release 仅对应 Windows 版本。应用内名称统一为“南枫批量改名”，仓库及发布资产使用 `Windows` 标识区分平台。
 
@@ -26,13 +28,13 @@ logs\app_error.txt
 logs\app_stdout.txt
 ```
 
-Release 同时提供 Windows 便携版 EXE 和 ZIP。BAT 启动器保留用于源码调试与问题排查。
+GitHub Release 默认提供 Inno Setup 7 x64 Windows 安装程序。BAT 启动器保留用于源码调试与问题排查。
 
-Windows v1.0.0 发布文件：
+Windows v1.1.0 发布文件：
 
 ```text
-NanfengBatchRenamer-Windows-v1.0.0.exe
-NanfengBatchRenamer-Windows-Portable-v1.0.0.zip
+NanfengBatchRenamer-Windows-v1.1.0-Setup.exe
+NanfengBatchRenamer-Windows-v1.1.0-Setup.exe.sha256
 ```
 
 ## 第一版支持
@@ -56,7 +58,9 @@ NanfengBatchRenamer-Windows-Portable-v1.0.0.zip
 - 扩展名统一小写 / 大写。
 - 检查冲突和非法文件名。
 - 执行改名。
+- 仅大小写变化使用临时名中转；批次任一步失败时自动恢复整批原文件，自动恢复失败会生成 JSON 恢复清单。
 - 撤销最近一次成功改名。
+- 根据当前屏幕可用区域等比缩放字号、控件、间距和表格，支持低分辨率布局。
 - 本地日志。
 
 ## 第一版暂不支持
@@ -85,3 +89,13 @@ logs
 ```
 
 每次执行和撤销都会写入日志，方便排查问题。
+
+## 开发验证
+
+```text
+python -m unittest discover -s tests -v
+python scripts\benchmark_core.py
+python scripts\capture_resolution_matrix.py
+```
+
+性能报告写入 `docs\performance-baseline.json`；分辨率截图和检查清单写入忽略 Git 的 `artifacts\ui-resolution`。

@@ -5,3 +5,4 @@ build/
 build_onefile/
 dist/
 release/
+artifacts/

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
 
 from .models import FileItem, RenamePlan, RuleSettings
@@ -29,6 +30,14 @@ def build_preview(items: list[FileItem], settings: RuleSettings) -> None:
         target_keys.append(normalize_path_key(item.target_path))
 
     conflicts = {key for key, count in Counter(target_keys).items() if count > 1}
+    moving_source_keys = {
+        normalize_path_key(item.source_path)
+        for item in selected_items
+        if item.target_path
+        and item.status == "可改名"
+        and normalize_path_key(item.target_path) != normalize_path_key(item.source_path)
+    }
+    existing_paths = _collect_existing_paths(item.folder for item in selected_items)
 
     for item in items:
         if not item.selected:
@@ -49,7 +58,8 @@ def build_preview(items: list[FileItem], settings: RuleSettings) -> None:
             item.message = "本批次内存在重名"
             continue
 
-        if item.target_path.exists() and normalize_path_key(item.target_path) != normalize_path_key(item.source_path):
+        source_key = normalize_path_key(item.source_path)
+        if key in existing_paths and key != source_key and key not in moving_source_keys:
             item.status = "冲突"
             item.message = "目标文件已存在"
 
@@ -71,5 +81,20 @@ def has_blocking_problem(items: list[FileItem]) -> bool:
 def normalize_path_key(path: Path) -> str:
     """Windows 路径大小写不敏感，用小写绝对路径比较。"""
 
-    return str(path.resolve()).lower()
+    return str(path.absolute()).replace("/", "\\").casefold()
 
+
+def _collect_existing_paths(folders: Iterable[Path]) -> set[str]:
+    """每个目录只枚举一次，避免大批量预览逐项执行磁盘 exists。"""
+
+    unique_folders: dict[str, Path] = {}
+    for folder in folders:
+        unique_folders.setdefault(normalize_path_key(folder), folder)
+
+    existing: set[str] = set()
+    for folder in unique_folders.values():
+        try:
+            existing.update(normalize_path_key(path) for path in folder.iterdir())
+        except OSError:
+            continue
+    return existing

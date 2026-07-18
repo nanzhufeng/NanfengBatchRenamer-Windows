@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+from math import ceil
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLayout,
     QLineEdit,
     QMainWindow,
     QMessageBox,
@@ -37,6 +39,7 @@ from .core.executor import RenameExecutor
 from .core.models import FileItem, RuleSettings
 from .core.preview import build_plans, build_preview, has_blocking_problem
 from .core.scanner import scan_files
+from .core.sorting import natural_sort_key
 
 
 def app_runtime_dir() -> Path:
@@ -55,6 +58,7 @@ class IconSpinBox(QSpinBox):
 
     def __init__(self) -> None:
         super().__init__()
+        self._ui_scale = 1.0
         self.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self._repeat_direction = 0
         self._repeat_delay_timer = QTimer(self)
@@ -70,6 +74,15 @@ class IconSpinBox(QSpinBox):
         self._up_button.released.connect(self._end_step)
         self._down_button.pressed.connect(lambda: self._begin_step(-1))
         self._down_button.released.connect(self._end_step)
+        self._up_button.setAccessibleName("增加数值")
+        self._down_button.setAccessibleName("减少数值")
+
+    def set_ui_scale(self, scale: float) -> None:
+        self._ui_scale = scale
+        self._up_button.set_ui_scale(scale)
+        self._down_button.set_ui_scale(scale)
+        self.updateGeometry()
+        self._layout_arrow_buttons()
 
     def _make_arrow_button(self, text: str) -> QToolButton:
         button = SpinArrowButton(text == "▲", self)
@@ -101,9 +114,12 @@ class IconSpinBox(QSpinBox):
 
     def resizeEvent(self, event: QEvent) -> None:
         super().resizeEvent(event)
-        button_width = 18
-        gap = 2
-        half_height = max((self.height() - gap * 2) // 2, 10)
+        self._layout_arrow_buttons()
+
+    def _layout_arrow_buttons(self) -> None:
+        button_width = max(8, ceil(18 * self._ui_scale))
+        gap = max(1, ceil(2 * self._ui_scale))
+        half_height = max((self.height() - gap * 2) // 2, max(5, ceil(10 * self._ui_scale)))
         x = self.width() - button_width - gap
         self._up_button.setGeometry(x, gap, button_width, half_height)
         self._down_button.setGeometry(x, gap + half_height, button_width, half_height)
@@ -113,6 +129,11 @@ class SpinArrowButton(QToolButton):
     def __init__(self, points_up: bool, parent: QWidget) -> None:
         super().__init__(parent)
         self.points_up = points_up
+        self._ui_scale = 1.0
+
+    def set_ui_scale(self, scale: float) -> None:
+        self._ui_scale = scale
+        self.update()
 
     def paintEvent(self, event: QEvent) -> None:
         super().paintEvent(event)
@@ -122,14 +143,25 @@ class SpinArrowButton(QToolButton):
         painter.setPen(Qt.PenStyle.NoPen)
         center_x = self.width() // 2
         center_y = self.height() // 2
+        vertical = max(2, ceil(3 * self._ui_scale))
+        horizontal = max(3, ceil(4 * self._ui_scale))
+        lower = max(1, ceil(2 * self._ui_scale))
         if self.points_up:
-            points = [QPoint(center_x, center_y - 3), QPoint(center_x - 4, center_y + 2), QPoint(center_x + 4, center_y + 2)]
+            points = [QPoint(center_x, center_y - vertical), QPoint(center_x - horizontal, center_y + lower), QPoint(center_x + horizontal, center_y + lower)]
         else:
-            points = [QPoint(center_x, center_y + 3), QPoint(center_x - 4, center_y - 2), QPoint(center_x + 4, center_y - 2)]
+            points = [QPoint(center_x, center_y + vertical), QPoint(center_x - horizontal, center_y - lower), QPoint(center_x + horizontal, center_y - lower)]
         painter.drawPolygon(points)
 
 
 class ComboArrowGlyph(QWidget):
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent)
+        self._ui_scale = 1.0
+
+    def set_ui_scale(self, scale: float) -> None:
+        self._ui_scale = scale
+        self.update()
+
     def paintEvent(self, event: QEvent) -> None:
         super().paintEvent(event)
         painter = QPainter(self)
@@ -138,7 +170,9 @@ class ComboArrowGlyph(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         center_x = self.width() // 2
         center_y = self.height() // 2
-        points = [QPoint(center_x, center_y + 3), QPoint(center_x - 5, center_y - 3), QPoint(center_x + 5, center_y - 3)]
+        vertical = max(2, ceil(3 * self._ui_scale))
+        horizontal = max(3, ceil(5 * self._ui_scale))
+        points = [QPoint(center_x, center_y + vertical), QPoint(center_x - horizontal, center_y - vertical), QPoint(center_x + horizontal, center_y - vertical)]
         painter.drawPolygon(points)
 
 
@@ -147,22 +181,49 @@ class IconComboBox(QComboBox):
 
     def __init__(self) -> None:
         super().__init__()
+        self._ui_scale = 1.0
         self._arrow_label = ComboArrowGlyph(self)
         self._arrow_label.setObjectName("comboArrowGlyph")
         self._arrow_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
+    def set_ui_scale(self, scale: float) -> None:
+        self._ui_scale = scale
+        self._arrow_label.set_ui_scale(scale)
+        self.updateGeometry()
+        self._layout_arrow()
+
     def resizeEvent(self, event: QEvent) -> None:
         super().resizeEvent(event)
-        self._arrow_label.setGeometry(self.width() - 22, 1, 20, self.height() - 2)
+        self._layout_arrow()
+
+    def _layout_arrow(self) -> None:
+        inset = max(1, ceil(self._ui_scale))
+        arrow_width = max(10, ceil(20 * self._ui_scale))
+        drop_width = max(12, ceil(22 * self._ui_scale))
+        self._arrow_label.setGeometry(self.width() - drop_width, inset, arrow_width, self.height() - inset * 2)
 
 
 class MainWindow(QMainWindow):
+    BASE_WIDTH = 2200
+    BASE_HEIGHT = 1152
+    MINIMUM_WIDTH = 640
+    MINIMUM_HEIGHT = 360
+
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("南枫批量改名")
         self.setWindowIcon(self._make_app_icon())
-        self.resize(2200, 1152)
-        self.setMinimumSize(1600, 900)
+        self.resize(self.BASE_WIDTH, self.BASE_HEIGHT)
+        self.setMinimumSize(self.MINIMUM_WIDTH, self.MINIMUM_HEIGHT)
+        self._ui_scale = 1.0
+        self._base_stylesheet = ""
+        self._widget_base_metrics: list[tuple[QWidget, int, int, int, int]] = []
+        self._layout_base_metrics: list[tuple[QLayout, tuple[int, int, int, int], int, int, int]] = []
+        self._base_table_column_widths: list[int] = []
+        self._base_table_row_height = 0
+        self._screen_signal_connected = False
+        self._screen_fit_pending = False
+        self._status_variant = "normal"
         self.items: list[FileItem] = []
         self.executor = RenameExecutor(PROJECT_DIR)
         self._updating_table = False
@@ -180,6 +241,9 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._apply_style()
+        self._base_stylesheet = self.styleSheet()
+        self._capture_scalable_metrics()
+        self._apply_accessibility()
         self._connect_rule_live_preview()
         self._update_buttons()
 
@@ -221,6 +285,173 @@ class MainWindow(QMainWindow):
         root_layout.addLayout(main_area, 1)
 
         self.setCentralWidget(root)
+
+    def _capture_scalable_metrics(self) -> None:
+        """记录基准像素，后续始终从基准重算，避免跨屏反复缩放累积误差。"""
+
+        if self.centralWidget() and self.centralWidget().layout():
+            self.centralWidget().layout().activate()
+
+        self._widget_base_metrics.clear()
+        for widget in self.findChildren(QWidget):
+            minimum = widget.minimumSize()
+            maximum = widget.maximumSize()
+            self._widget_base_metrics.append(
+                (widget, minimum.width(), minimum.height(), maximum.width(), maximum.height())
+            )
+
+        self._layout_base_metrics.clear()
+        for layout in self.findChildren(QLayout):
+            margins = layout.contentsMargins()
+            horizontal_spacing = layout.horizontalSpacing() if hasattr(layout, "horizontalSpacing") else -1
+            vertical_spacing = layout.verticalSpacing() if hasattr(layout, "verticalSpacing") else -1
+            self._layout_base_metrics.append(
+                (
+                    layout,
+                    (margins.left(), margins.top(), margins.right(), margins.bottom()),
+                    layout.spacing(),
+                    horizontal_spacing,
+                    vertical_spacing,
+                )
+            )
+
+        self._base_table_column_widths = [self.table.columnWidth(index) for index in range(self.table.columnCount())]
+        self._base_table_row_height = self.table.verticalHeader().defaultSectionSize()
+
+    @staticmethod
+    def scale_for_available_size(width: int, height: int) -> float:
+        if width <= 0 or height <= 0:
+            return 1.0
+        return min(1.0, width / MainWindow.BASE_WIDTH, height / MainWindow.BASE_HEIGHT)
+
+    @staticmethod
+    def _scaled_value(value: int, scale: float) -> int:
+        if value <= 0:
+            return value
+        return max(1, ceil(value * scale))
+
+    def _scaled_stylesheet(self, stylesheet: str, scale: float) -> str:
+        def replace(match: re.Match[str]) -> str:
+            return f"{self._scaled_value(int(match.group(1)), scale)}px"
+
+        return re.sub(r"(\d+)px", replace, stylesheet)
+
+    def apply_ui_scale(self, scale: float) -> None:
+        """公开给离屏回归使用；字号、几何和间距严格使用同一比例。"""
+
+        scale = max(0.3, min(1.0, scale))
+        self._ui_scale = scale
+
+        for widget, min_width, min_height, max_width, max_height in self._widget_base_metrics:
+            widget.setMinimumSize(0, 0)
+            widget.setMaximumSize(16777215, 16777215)
+            next_max_width = self._scaled_value(max_width, scale) if max_width < 16777215 else 16777215
+            next_max_height = self._scaled_value(max_height, scale) if max_height < 16777215 else 16777215
+            widget.setMaximumSize(next_max_width, next_max_height)
+            widget.setMinimumSize(
+                self._scaled_value(min_width, scale),
+                self._scaled_value(min_height, scale),
+            )
+
+        for layout, margins, spacing, horizontal_spacing, vertical_spacing in self._layout_base_metrics:
+            layout.setContentsMargins(*(self._scaled_value(value, scale) for value in margins))
+            if horizontal_spacing >= 0 and hasattr(layout, "setHorizontalSpacing"):
+                layout.setHorizontalSpacing(self._scaled_value(horizontal_spacing, scale))
+            if vertical_spacing >= 0 and hasattr(layout, "setVerticalSpacing"):
+                layout.setVerticalSpacing(self._scaled_value(vertical_spacing, scale))
+            elif spacing >= 0:
+                layout.setSpacing(self._scaled_value(spacing, scale))
+
+        for index, width in enumerate(self._base_table_column_widths):
+            self.table.setColumnWidth(index, self._scaled_value(width, scale))
+        self.table.verticalHeader().setDefaultSectionSize(self._scaled_value(self._base_table_row_height, scale))
+
+        self.setStyleSheet(self._scaled_stylesheet(self._base_stylesheet, scale))
+        for spinbox in self.findChildren(IconSpinBox):
+            spinbox.set_ui_scale(scale)
+        for combo in self.findChildren(IconComboBox):
+            combo.set_ui_scale(scale)
+        for label in self.findChildren(QLabel):
+            label.setWordWrap(False)
+
+        self._apply_current_status_style()
+        if self.centralWidget() and self.centralWidget().layout():
+            self.centralWidget().layout().activate()
+
+    def _fit_to_current_screen(self) -> None:
+        self._screen_fit_pending = False
+        handle = self.windowHandle()
+        screen = handle.screen() if handle and handle.screen() else QApplication.primaryScreen()
+        if screen is None:
+            return
+
+        available = screen.availableGeometry()
+        usable_width = max(self.MINIMUM_WIDTH, available.width() - 16)
+        usable_height = max(self.MINIMUM_HEIGHT, available.height() - 48)
+        scale = self.scale_for_available_size(usable_width, usable_height)
+        self.apply_ui_scale(scale)
+
+        target_width = min(self.BASE_WIDTH, usable_width, ceil(self.BASE_WIDTH * scale))
+        target_height = min(self.BASE_HEIGHT, usable_height, ceil(self.BASE_HEIGHT * scale))
+        self.resize(target_width, target_height)
+
+        left = available.left() + max(0, (available.width() - self.frameGeometry().width()) // 2)
+        top = available.top() + max(0, (available.height() - self.frameGeometry().height()) // 2)
+        self.move(left, top)
+
+    def _schedule_screen_fit(self) -> None:
+        if self._screen_fit_pending:
+            return
+        self._screen_fit_pending = True
+        QTimer.singleShot(0, self._fit_to_current_screen)
+
+    def showEvent(self, event: QEvent) -> None:
+        super().showEvent(event)
+        handle = self.windowHandle()
+        if handle and not self._screen_signal_connected:
+            handle.screenChanged.connect(lambda _screen: self._schedule_screen_fit())
+            self._screen_signal_connected = True
+        self._schedule_screen_fit()
+
+    def _apply_accessibility(self) -> None:
+        self.path_edit.setAccessibleName("文件夹路径")
+        self.path_edit.setAccessibleDescription("输入待处理文件夹路径，按回车读取文件")
+        self.table.setAccessibleName("文件改名预览表")
+        self.table.setAccessibleDescription("逐行比较原文件名、新文件名、状态和问题提示")
+        self.status_label.setAccessibleName("操作状态")
+        self.count_label.setAccessibleName("文件数量统计")
+        self.extension_all_btn.setAccessibleName("读取全部文件格式")
+
+        for extension, button in self.extension_buttons.items():
+            button.setAccessibleName(f"筛选 {extension} 扩展名")
+
+        controls = {
+            self.find_enabled: "启用查找替换",
+            self.find_text: "查找内容",
+            self.replace_text: "替换内容",
+            self.case_sensitive: "查找时区分大小写",
+            self.prefix_enabled: "启用前缀",
+            self.prefix_text: "前缀文字",
+            self.suffix_enabled: "启用后缀",
+            self.suffix_text: "后缀文字",
+            self.insert_enabled: "启用指定位置插入",
+            self.insert_text: "插入文字",
+            self.insert_position: "插入位置",
+            self.trim_enabled: "启用删除字符",
+            self.trim_left: "删除开头字符数量",
+            self.trim_right: "删除结尾字符数量",
+            self.trim_start: "中间删除起始位置",
+            self.trim_count: "中间删除字符数量",
+            self.number_enabled: "启用自动编号",
+            self.number_position: "编号位置",
+            self.number_digits: "编号位数",
+            self.number_start: "编号起始值",
+            self.number_step: "编号递增值",
+            self.number_separator: "编号分隔符",
+            self.extension_mode: "扩展名大小写规则",
+        }
+        for widget, name in controls.items():
+            widget.setAccessibleName(name)
 
     def _build_sidebar(self) -> QWidget:
         panel = QFrame()
@@ -917,7 +1148,8 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             "确认执行改名",
-            f"将改名 {len(plans)} 个文件。\n\n目标路径为当前文件所在目录。\n执行后会写入撤销记录。",
+            f"将改名 {len(plans)} 个文件。\n\n目标路径为当前文件所在目录。"
+            "\n任一步失败将尝试恢复整批原文件。\n完整成功后才写入撤销记录。",
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
@@ -939,8 +1171,18 @@ class MainWindow(QMainWindow):
         ok_count = sum(1 for result in results if result.ok)
         fail_count = len(results) - ok_count
         self.refresh_table()
-        self.set_status(f"执行完成：成功 {ok_count} 个，失败 {fail_count} 个。", "success" if fail_count == 0 else "warning")
-        if ok_count:
+        if self.executor.last_recovery_file:
+            self.set_status(f"执行失败且回滚不完整；恢复清单：{self.executor.last_recovery_file}", "error")
+            QMessageBox.critical(
+                self,
+                "需要恢复文件",
+                f"批次执行失败，部分文件未能自动恢复。\n\n恢复清单：\n{self.executor.last_recovery_file}",
+            )
+        elif fail_count:
+            self.set_status(f"执行失败：已恢复整批原文件，失败 {fail_count} 个。", "warning")
+            QMessageBox.warning(self, "执行失败", "改名没有完整完成，已恢复整批原文件。")
+        else:
+            self.set_status(f"执行完成：成功 {ok_count} 个。", "success")
             QMessageBox.information(self, "执行完成", f"成功改名 {ok_count} 个文件。")
         self._update_buttons()
 
@@ -962,8 +1204,15 @@ class MainWindow(QMainWindow):
         ok_count = sum(1 for result in results if result.ok)
         fail_count = len(results) - ok_count
         self.refresh_table()
-        self.set_status(f"撤销完成：成功 {ok_count} 个，失败 {fail_count} 个。", "success" if fail_count == 0 else "warning")
-        QMessageBox.information(self, "撤销结果", f"成功 {ok_count} 个，失败 {fail_count} 个。")
+        if self.executor.last_recovery_file:
+            self.set_status(f"撤销失败且回滚不完整；恢复清单：{self.executor.last_recovery_file}", "error")
+            QMessageBox.critical(self, "撤销需要恢复", f"恢复清单：\n{self.executor.last_recovery_file}")
+        elif fail_count:
+            self.set_status("撤销失败：已恢复到撤销前状态。", "warning")
+            QMessageBox.warning(self, "撤销失败", "撤销没有完整完成，已恢复到撤销前状态。")
+        else:
+            self.set_status(f"撤销完成：成功 {ok_count} 个。", "success")
+            QMessageBox.information(self, "撤销结果", f"成功撤销 {ok_count} 个文件。")
         self._update_buttons()
 
     def set_all_selected(self, selected: bool) -> None:
@@ -1188,15 +1437,7 @@ class MainWindow(QMainWindow):
         return self._natural_key(item.original_name)
 
     def _natural_key(self, text: str) -> tuple[object, ...]:
-        parts: list[object] = []
-        for part in re.split(r"(\d+)", text):
-            if not part:
-                continue
-            if part.isdigit():
-                parts.append((1, int(part)))
-            else:
-                parts.append((0, part.lower()))
-        return tuple(parts)
+        return natural_sort_key(text)
 
     def eventFilter(self, watched: object, event: QEvent) -> bool:
         if watched is self.table.viewport():
@@ -1252,6 +1493,15 @@ class MainWindow(QMainWindow):
         self.execute_btn.setEnabled(has_plan and not blocked)
 
     def set_status(self, text: str, variant: str = "normal") -> None:
+        self._status_variant = variant
+        self._status_clear_timer.stop()
+        self.status_label.setText(text)
+        self._apply_current_status_style()
+        self._status_clear_timer.start(7000)
+
+    def _apply_current_status_style(self) -> None:
+        if not hasattr(self, "status_label"):
+            return
         styles = {
             "normal": ("#f8fafc", "#475569", "#dbe4f0"),
             "success": ("#d1fae5", "#047857", "#34d399"),
@@ -1263,19 +1513,20 @@ class MainWindow(QMainWindow):
             "copyExt": ("#ede9fe", "#6d28d9", "#a78bfa"),
             "copyPath": ("#ffedd5", "#c2410c", "#fb923c"),
         }
-        bg, fg, border = styles.get(variant, styles["normal"])
-        self._status_clear_timer.stop()
-        self.status_label.setText(text)
+        bg, fg, border = styles.get(self._status_variant, styles["normal"])
+        radius = self._scaled_value(6, self._ui_scale)
+        vertical_padding = self._scaled_value(4, self._ui_scale)
+        horizontal_padding = self._scaled_value(10, self._ui_scale)
+        border_width = self._scaled_value(1, self._ui_scale)
         self.status_label.setStyleSheet(
-            f"background:{bg}; color:{fg}; border:1px solid {border}; border-radius:6px; padding:4px 10px; font-weight:800;"
+            f"background:{bg}; color:{fg}; border:{border_width}px solid {border}; "
+            f"border-radius:{radius}px; padding:{vertical_padding}px {horizontal_padding}px; font-weight:800;"
         )
-        self._status_clear_timer.start(7000)
 
     def clear_status(self) -> None:
         self.status_label.clear()
-        self.status_label.setStyleSheet(
-            "background:#f8fafc; color:#64748b; border:1px solid #dbe4f0; border-radius:6px; padding:4px 8px;"
-        )
+        self._status_variant = "normal"
+        self._apply_current_status_style()
 
     def _format_size(self, path: Path) -> str:
         size = self._file_size(path)

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-19T01:51:21+08:00",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "python": "3.13.3",
+  "sizes": [
+    1000,
+    10000,
+    50000
+  ],
+  "cases": [
+    {
+      "name": "rules",
+      "items": 1000,
+      "seconds": 0.007595,
+      "items_per_second": 131665.57,
+      "peak_traced_bytes": 128133
+    },
+    {
+      "name": "preview",
+      "items": 1000,
+      "seconds": 0.132432,
+      "items_per_second": 7551.03,
+      "peak_traced_bytes": 1622825
+    },
+    {
+      "name": "natural_sort",
+      "items": 1000,
+      "seconds": 0.006008,
+      "items_per_second": 166439.2,
+      "peak_traced_bytes": 362022
+    },
+    {
+      "name": "rules",
+      "items": 10000,
+      "seconds": 0.081609,
+      "items_per_second": 122535.05,
+      "peak_traced_bytes": 1284455
+    },
+    {
+      "name": "preview",
+      "items": 10000,
+      "seconds": 1.351543,
+      "items_per_second": 7398.95,
+      "peak_traced_bytes": 13250045
+    },
+    {
+      "name": "natural_sort",
+      "items": 10000,
+      "seconds": 0.059478,
+      "items_per_second": 168129.68,
+      "peak_traced_bytes": 3664070
+    },
+    {
+      "name": "rules",
+      "items": 50000,
+      "seconds": 0.41051,
+      "items_per_second": 121799.86,
+      "peak_traced_bytes": 6483657
+    },
+    {
+      "name": "preview",
+      "items": 50000,
+      "seconds": 6.830524,
+      "items_per_second": 7320.08,
+      "peak_traced_bytes": 65184914
+    },
+    {
+      "name": "natural_sort",
+      "items": 50000,
+      "seconds": 0.313044,
+      "items_per_second": 159721.75,
+      "peak_traced_bytes": 18344070
+    }
+  ],
+  "notes": [
+    "使用纯内存文件项和不存在的基准路径，不读取或改名用户文件。",
+    "peak_traced_bytes 是 Python tracemalloc 峰值，不代表进程总内存。",
+    "单次结果是基线证据，不等同于完整性能优化结论。"
+  ]
+}
