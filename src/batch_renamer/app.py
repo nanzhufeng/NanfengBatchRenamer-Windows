@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QEvent, QPoint, QTimer, Qt
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QColor, QIcon, QPainter
 from PySide6.QtWidgets import (
     QAbstractSpinBox,
     QApplication,
@@ -248,24 +248,11 @@ class MainWindow(QMainWindow):
         self._update_buttons()
 
     def _make_app_icon(self) -> QIcon:
-        pixmap = QPixmap(64, 64)
-        pixmap.fill(Qt.GlobalColor.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QColor("#0f766e"))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(4, 4, 56, 56, 12, 12)
-
-        painter.setPen(QColor("#ffffff"))
-        font = QFont("Microsoft YaHei")
-        font.setBold(True)
-        font.setPixelSize(34)
-        painter.setFont(font)
-        painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "南")
-        painter.end()
-
-        return QIcon(pixmap)
+        resource_root = Path(getattr(sys, "_MEIPASS", PROJECT_DIR))
+        icon = QIcon(str(resource_root / "build_assets" / "app_icon.png"))
+        if icon.isNull() and getattr(sys, "frozen", False):
+            icon = QIcon(sys.executable)
+        return icon
 
     def _build_ui(self) -> None:
         root = QWidget()

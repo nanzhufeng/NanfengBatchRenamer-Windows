@@ -16,6 +16,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea
 
@@ -41,6 +42,12 @@ class UiContractTests(unittest.TestCase):
 
     def test_final_workbench_identity_and_primary_layout_contract(self) -> None:
         self.assertEqual(self.window.windowTitle(), "南枫批量改名")
+        expected_icon = QIcon(str(PROJECT_ROOT / "build_assets" / "app_icon.png"))
+        self.assertFalse(self.window.windowIcon().isNull())
+        self.assertEqual(
+            self.window.windowIcon().pixmap(64, 64).toImage(),
+            expected_icon.pixmap(64, 64).toImage(),
+        )
         self.assertEqual((self.window.minimumWidth(), self.window.minimumHeight()), (640, 360))
         self.assertEqual(
             self.window.table.horizontalScrollBarPolicy(),

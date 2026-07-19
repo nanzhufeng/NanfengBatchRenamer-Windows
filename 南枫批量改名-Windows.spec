@@ -5,7 +5,7 @@ a = Analysis(
     ['packaging_entry.py'],
     pathex=['src'],
     binaries=[],
-    datas=[],
+    datas=[('build_assets\\app_icon.png', 'build_assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

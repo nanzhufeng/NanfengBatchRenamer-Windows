@@ -1,5 +1,5 @@
-param(
-    [string]$Version = "1.1.0"
+﻿param(
+    [string]$Version = "1.1.1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,6 +23,9 @@ try {
 
     python -m compileall src tests scripts
     if ($LASTEXITCODE -ne 0) { throw "源码编译检查失败" }
+
+    python scripts\check_icon_assets.py
+    if ($LASTEXITCODE -ne 0) { throw "Icon asset validation failed" }
 
     python -m PyInstaller --noconfirm --clean $specFile
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller 构建失败" }
