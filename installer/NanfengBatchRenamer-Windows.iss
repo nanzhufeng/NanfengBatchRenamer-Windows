@@ -1,10 +1,11 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.3"
+  #define MyAppVersion "1.1.4"
 #endif
 
 #define MyAppName "南枫批量改名"
 #define MyAppPublisher "南烛枫"
 #define MyAppExeName "南枫批量改名.exe"
+#define MyShortcutIconName "app_icon-v" + MyAppVersion + ".ico"
 #define MyRepoUrl "https://github.com/nanzhufeng/NanfengBatchRenamer-Windows"
 
 [Setup]
@@ -26,7 +27,7 @@ MinVersion=10.0
 OutputDir=..\release
 OutputBaseFilename=NanfengBatchRenamer-Windows-v{#MyAppVersion}-Setup
 SetupIconFile=..\build_assets\app_icon.ico
-UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallDisplayIcon={app}\{#MyShortcutIconName}
 UninstallDisplayName={#MyAppName}
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -47,10 +48,11 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build_assets\app_icon.ico"; DestDir: "{app}"; DestName: "{#MyShortcutIconName}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#MyShortcutIconName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#MyShortcutIconName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent

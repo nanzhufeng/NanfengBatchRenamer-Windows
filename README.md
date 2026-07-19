@@ -30,12 +30,14 @@ logs\app_stdout.txt
 
 GitHub Release 默认提供 Inno Setup 7 x64 Windows 安装程序。BAT 启动器保留用于源码调试与问题排查。
 
-Windows v1.1.3 发布文件：
+Windows v1.1.4 发布文件：
 
 ```text
-NanfengBatchRenamer-Windows-v1.1.3-Setup.exe
-NanfengBatchRenamer-Windows-v1.1.3-Setup.exe.sha256
+NanfengBatchRenamer-Windows-v1.1.4-Setup.exe
+NanfengBatchRenamer-Windows-v1.1.4-Setup.exe.sha256
 ```
+
+升级后若第三方桌面整理软件仍显示旧图标，请重启该桌面整理软件一次。安装程序已让快捷方式引用版本化 ICO，但第三方整理软件可能继续保留旧快捷方式位图缓存。
 
 ## 第一版支持
 
