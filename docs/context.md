@@ -6,8 +6,8 @@
 - 平台：Windows 10/11 桌面
 - Git 根目录：`C:\Users\Administrator\Documents\00-日常问答\南枫批量改名`
 - GitHub：`nanzhufeng/NanfengBatchRenamer-Windows`（私有）
-- 当前正式基准：标签与 GitHub Release `v1.1.1`
-- 正式资产：`NanfengBatchRenamer-Windows-v1.1.1-Setup.exe` 与对应 SHA-256 文件
+- 当前正式基准：标签与 GitHub Release `v1.1.2`
+- 正式资产：`NanfengBatchRenamer-Windows-v1.1.2-Setup.exe` 与对应 SHA-256 文件
 
 ## 第一用户任务
 
@@ -52,7 +52,7 @@
 │     └─ executor.py                  真实改名、日志与最近一次撤销
 ├─ tests/                             临时目录核心测试与离屏 UI 合同测试
 ├─ scripts/                           性能基线与分辨率截图检查
-├─ build_assets/                      用户确认的软件图标 PNG 与 Windows ICO
+├─ build_assets/                      用户确认的原图、圆角 PNG 与 Windows ICO
 ├─ test_samples/                      只读固定样本，不用于真实执行测试
 ├─ packaging_entry.py                 PyInstaller 入口
 ├─ 南枫批量改名-Windows.spec          Windows 单文件构建配置
