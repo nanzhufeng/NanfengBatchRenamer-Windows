@@ -83,11 +83,16 @@ def main() -> int:
     ]
     if any(corner_alphas) or rounded_image.pixelColor(width // 2, height // 2).alpha() != 255:
         raise SystemExit("透明圆角遮罩不符合预期。")
+    expected_radius = round(width * 0.12)
+    if rounded_image.pixelColor(0, expected_radius // 2).alpha() != 0:
+        raise SystemExit("圆角半径过小，小尺寸下可能不可见。")
+    if rounded_image.pixelColor(0, expected_radius).alpha() < 250:
+        raise SystemExit("圆角半径或边缘位置异常。")
 
     png_hash = sha256(PNG_PATH)
     print(f"原图 SHA-256：{sha256(original)}")
     print(f"色彩校验：仅 {neutralized_pixels} 个低饱和暖白像素转为中性灰")
-    print("圆角校验：四角透明，中心不透明")
+    print(f"圆角校验：四角透明，半径约 {expected_radius}px（12%）")
     print(f"PNG：{png_size.width()}x{png_size.height()}，SHA-256={png_hash}")
     print(f"ICO 尺寸：{sorted(actual_sizes)}")
     app.quit()

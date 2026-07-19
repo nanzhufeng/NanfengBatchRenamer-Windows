@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.2"
+  #define MyAppVersion "1.1.3"
 #endif
 
 #define MyAppName "南枫批量改名"
