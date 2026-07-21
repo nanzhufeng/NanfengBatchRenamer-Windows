@@ -2,6 +2,8 @@
 
 本版本修复 Windows 桌面快捷方式仍显示旧方形图标的问题，功能与 `v1.1.3` 保持一致。
 
+![南枫批量改名 Windows 界面预览](https://github.com/nanzhufeng/NanfengBatchRenamer-Windows/releases/download/v1.1.4/NanfengBatchRenamer-Windows-v1.1.4-Preview.png)
+
 ## 主要更新
 
 - 安装目录新增带版本号的独立 ICO 文件。
