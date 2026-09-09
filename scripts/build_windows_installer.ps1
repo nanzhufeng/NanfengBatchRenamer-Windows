@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$Version = "1.1.4"
+    [string]$Version = "1.1.5"
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,6 +15,11 @@ $checksumPath = "$installerPath.sha256"
 if (-not (Test-Path -LiteralPath $innoCompiler)) {
     throw "未找到 Inno Setup 7 编译器：$innoCompiler"
 }
+
+# Keep unrelated desktop-tool DLLs out of PyInstaller dependency discovery.
+$buildOriginalPath = $env:PATH
+$buildPythonDir = Split-Path -Parent (Get-Command python.exe).Source
+$env:PATH = "$buildPythonDir;$buildPythonDir\Scripts;$env:SystemRoot\System32;$env:SystemRoot"
 
 Push-Location $projectRoot
 try {
@@ -43,5 +48,6 @@ try {
     Write-Host "SHA-256：$hash"
 }
 finally {
+    $env:PATH = $buildOriginalPath
     Pop-Location
 }

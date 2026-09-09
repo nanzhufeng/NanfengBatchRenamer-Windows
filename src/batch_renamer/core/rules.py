@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from .models import RuleSettings
 
 
 def apply_rules(stem: str, suffix: str, settings: RuleSettings, index: int) -> tuple[str, str]:
     """按固定规则链生成新文件名主体和扩展名。"""
 
-    name = stem
+    name = f"{stem}{suffix}" if settings.include_extension else stem
 
     if settings.find_enabled and settings.find_text:
         if settings.find_case_sensitive:
@@ -48,10 +50,14 @@ def apply_rules(stem: str, suffix: str, settings: RuleSettings, index: int) -> t
             name = f"{name}{sep}{number_text}" if sep else f"{name}{number_text}"
 
     new_suffix = suffix
+    if settings.include_extension:
+        new_suffix = Path(name).suffix
+        if new_suffix:
+            name = name[:-len(new_suffix)]
     if settings.extension_mode == "统一小写":
-        new_suffix = suffix.lower()
+        new_suffix = new_suffix.lower()
     elif settings.extension_mode == "统一大写":
-        new_suffix = suffix.upper()
+        new_suffix = new_suffix.upper()
 
     return name, new_suffix
 

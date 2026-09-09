@@ -203,6 +203,26 @@ class IconComboBox(QComboBox):
         self._arrow_label.setGeometry(self.width() - drop_width, inset, arrow_width, self.height() - inset * 2)
 
 
+class ExtensionFilterPanel(QWidget):
+    """Keep the filter row proportional when its available width is constrained."""
+
+    def resizeEvent(self, event: QEvent) -> None:
+        super().resizeEvent(event)
+        self.fit_contents()
+
+    def fit_contents(self) -> None:
+        base_scale = getattr(self.window(), "_ui_scale", 1.0)
+        scale = min(base_scale, max(0.3, self.width() / 1180))
+        font_size = max(6, int(13 * scale))
+        padding = max(1, int(8 * scale))
+        self.setStyleSheet(
+            f"#extensionFilter QPushButton, #extensionFilter QLabel, #extensionFilter QCheckBox {{ font-size: {font_size}px; }}"
+            f"#extensionFilter QPushButton {{ min-width: {int(42 * scale)}px; padding: {max(1, int(3 * scale))}px {padding}px; }}"
+        )
+        if self.layout():
+            self.layout().setSpacing(max(1, int(5 * scale)))
+
+
 class MainWindow(QMainWindow):
     BASE_WIDTH = 2200
     BASE_HEIGHT = 1152
@@ -361,6 +381,8 @@ class MainWindow(QMainWindow):
         for label in self.findChildren(QLabel):
             label.setWordWrap(False)
 
+        for panel in self.findChildren(ExtensionFilterPanel):
+            panel.fit_contents()
         self._apply_current_status_style()
         if self.centralWidget() and self.centralWidget().layout():
             self.centralWidget().layout().activate()
@@ -552,7 +574,7 @@ class MainWindow(QMainWindow):
         return label
 
     def _build_extension_filter(self) -> QWidget:
-        panel = QWidget()
+        panel = ExtensionFilterPanel()
         panel.setObjectName("extensionFilter")
         layout = QHBoxLayout(panel)
         layout.setContentsMargins(6, 3, 6, 3)
@@ -578,9 +600,9 @@ class MainWindow(QMainWindow):
             self.extension_buttons[ext] = btn
             layout.addWidget(btn)
 
-        layout.addSpacing(10)
+        layout.addSpacing(6)
         layout.addWidget(self._extension_group_label("视频"))
-        for ext in ("mp4", "mov", "avi", "mkv"):
+        for ext in ("mp4", "mov", "avi", "mkv", "ts", "flv", "wmv", "m4v"):
             btn = QPushButton(ext)
             btn.setObjectName("extensionVideoChip")
             btn.setCheckable(True)
@@ -590,7 +612,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(btn)
 
         layout.addStretch(1)
-        layout.addWidget(self.include_subfolders)
+        layout.addWidget(self.include_subfolders, 0, Qt.AlignmentFlag.AlignVCenter)
         return panel
 
     def _extension_group_label(self, text: str) -> QLabel:
@@ -712,7 +734,14 @@ class MainWindow(QMainWindow):
 
         title = QLabel("规则链")
         title.setObjectName("sectionTitle")
-        layout.addWidget(title)
+        heading = QHBoxLayout()
+        heading.addWidget(title)
+        heading.addStretch()
+        self.include_extension = QCheckBox("包含扩展名")
+        self.include_extension.setAccessibleName("改名范围：包含扩展名")
+        self.include_extension.setToolTip("勾选后，查找替换、添加、删除和编号统一作用于完整文件名（含点号和扩展名）；扩展名大小写最后处理。")
+        heading.addWidget(self.include_extension)
+        layout.addLayout(heading)
 
         self.find_enabled = QCheckBox("查找替换")
         self.find_text = QLineEdit()
@@ -1086,6 +1115,7 @@ class MainWindow(QMainWindow):
 
     def collect_settings(self) -> RuleSettings:
         return RuleSettings(
+            include_extension=self.include_extension.isChecked(),
             find_enabled=self.find_enabled.isChecked(),
             find_text=self.find_text.text(),
             replace_text=self.replace_text.text(),
@@ -1263,6 +1293,7 @@ class MainWindow(QMainWindow):
             self.live_preview()
 
     def reset_rules(self) -> None:
+        self.include_extension.setChecked(False)
         self.reset_find_rule(update_status=False)
         self.reset_add_rule(update_status=False)
         self.reset_trim_rule(update_status=False)
@@ -1273,6 +1304,7 @@ class MainWindow(QMainWindow):
 
     def _connect_rule_live_preview(self) -> None:
         checkboxes = (
+            self.include_extension,
             self.find_enabled,
             self.case_sensitive,
             self.prefix_enabled,

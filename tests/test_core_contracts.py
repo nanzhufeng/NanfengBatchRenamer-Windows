@@ -19,6 +19,46 @@ from batch_renamer.core.scanner import scan_files
 
 
 class RuleContractTests(unittest.TestCase):
+    def test_extension_scope_applies_to_every_text_rule(self) -> None:
+        cases = [
+            (dict(find_enabled=True, find_text="mkv1", replace_text="mkv"), "film.mkv"),
+            (dict(trim_enabled=True, trim_right=1), "film.mkv"),
+            (dict(prefix_enabled=True, prefix_text="P_"), "P_film.mkv1"),
+            (dict(suffix_enabled=True, suffix_text="X"), "film.mkv1X"),
+            (dict(insert_enabled=True, insert_position=9, insert_text="X"), "film.mkv1X"),
+            (dict(number_enabled=True, number_position="后缀", number_digits=1), "film.mkv1_1"),
+        ]
+        for values, expected in cases:
+            with self.subTest(values=values):
+                actual = apply_rules("film", ".mkv1", RuleSettings(include_extension=True, **values), 0)
+                self.assertEqual("".join(actual), expected)
+        settings = RuleSettings(find_enabled=True, find_text="mkv1", replace_text="MKV")
+        self.assertEqual(apply_rules("film", ".mkv1", settings, 0), ("film", ".mkv1"))
+        settings.include_extension = True
+        settings.extension_mode = "统一小写"
+        self.assertEqual(apply_rules("film", ".mkv1", settings, 0), ("film", ".mkv"))
+        settings.find_text, settings.replace_text = ".mkv1", ""
+        self.assertEqual(apply_rules("film", ".mkv1", settings, 0), ("film", ""))
+
+    def test_extension_scope_preview_execute_undo_and_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = [root / "film.mkv1", root / "other.mp41"]
+            for path in paths:
+                path.write_text(path.name, encoding="utf-8")
+            items = [FileItem(path) for path in paths]
+            settings = RuleSettings(include_extension=True, trim_enabled=True, trim_right=1)
+            build_preview(items, settings)
+            self.assertEqual([item.new_name for item in items], ["film.mkv", "other.mp4"])
+            executor = RenameExecutor(root / "logs")
+            self.assertTrue(all(result.ok for result in executor.execute(build_plans(items))))
+            self.assertEqual((root / "film.mkv").read_text(encoding="utf-8"), "film.mkv1")
+            self.assertTrue(all(result.ok for result in executor.undo_last()))
+            self.assertTrue(all(path.exists() for path in paths))
+            (root / "film.mkv").write_text("existing", encoding="utf-8")
+            build_preview(items, settings)
+            self.assertEqual(items[0].status, "冲突")
+
     def test_combined_rules_follow_the_documented_order(self) -> None:
         settings = RuleSettings(
             find_enabled=True,

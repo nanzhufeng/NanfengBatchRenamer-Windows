@@ -86,4 +86,6 @@ class RuleSettings:
 
     extension_mode: Literal["保持不变", "统一小写", "统一大写"] = "保持不变"
 
+    include_extension: bool = False
+
     notes: list[str] = field(default_factory=list)

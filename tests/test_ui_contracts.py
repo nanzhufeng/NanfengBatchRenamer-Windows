@@ -40,6 +40,50 @@ class UiContractTests(unittest.TestCase):
         self.window.deleteLater()
         self.app.processEvents()
 
+    def test_extension_scope_toggle_updates_preview_and_global_reset(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "film.mkv1"
+            path.write_text("sample", encoding="utf-8")
+            self.window.items = [FileItem(path)]
+            self.window.refresh_table()
+            self.window.find_enabled.setChecked(True)
+            self.window.find_text.setText("mkv1")
+            self.window.replace_text.setText("mkv")
+            QTest.qWait(self.window._live_preview_timer.interval() + 80)
+            self.assertEqual(self.window.items[0].new_name, "film.mkv1")
+            self.window.include_extension.setChecked(True)
+            QTest.qWait(self.window._live_preview_timer.interval() + 80)
+            self.assertEqual(self.window.table.item(0, 4).text(), "film.mkv")
+            self.window.reset_add_rule()
+            self.assertTrue(self.window.include_extension.isChecked())
+            self.window.include_extension.setChecked(False)
+            QTest.qWait(self.window._live_preview_timer.interval() + 80)
+            self.assertEqual(self.window.items[0].new_name, "film.mkv1")
+            self.window.include_extension.setChecked(True)
+            self.window.reset_rules()
+            self.assertFalse(self.window.collect_settings().include_extension)
+
+    def test_extension_rows_fit_without_overlap_at_supported_sizes(self) -> None:
+        for removed in ("m2ts", "mts", "webm", "mpg", "mpeg"):
+            self.assertNotIn(removed, self.window.extension_buttons)
+        for width, height in ((1280, 720), (1366, 768), (1600, 900), (1920, 1080), (2200, 1152)):
+            with self.subTest(size=(width, height)):
+                scale = self.window.scale_for_available_size(width, height)
+                self.window.apply_ui_scale(scale)
+                self.window.resize(ceil(self.window.BASE_WIDTH * scale), ceil(self.window.BASE_HEIGHT * scale))
+                self.app.processEvents()
+                buttons = list(self.window.extension_buttons.values())
+                panel = buttons[0].parentWidget()
+                for button in buttons:
+                    self.assertTrue(panel.rect().contains(button.geometry()))
+                    self.assertGreaterEqual(button.height(), button.fontMetrics().height())
+                    self.assertGreaterEqual(button.width(), button.fontMetrics().horizontalAdvance(button.text()))
+                for index, button in enumerate(buttons):
+                    for other in buttons[index + 1:]:
+                        self.assertFalse(button.geometry().intersects(other.geometry()))
+                source = panel.parentWidget()
+                self.assertTrue(source.rect().contains(panel.geometry()))
+
     def test_final_workbench_identity_and_primary_layout_contract(self) -> None:
         self.assertEqual(self.window.windowTitle(), "南枫批量改名")
         expected_icon = QIcon(str(PROJECT_ROOT / "build_assets" / "app_icon.png"))
