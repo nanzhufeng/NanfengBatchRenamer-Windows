@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
     QFileDialog,
     QFrame,
     QGridLayout,
@@ -40,6 +41,7 @@ from .core.models import FileItem, RuleSettings
 from .core.preview import build_plans, build_preview, has_blocking_problem
 from .core.scanner import scan_files
 from .core.sorting import natural_sort_key
+from . import __build_time__, __version__
 
 
 def app_runtime_dir() -> Path:
@@ -221,6 +223,90 @@ class ExtensionFilterPanel(QWidget):
         )
         if self.layout():
             self.layout().setSpacing(max(1, int(5 * scale)))
+
+
+class AboutDialog(QDialog):
+    """显示产品、版本和维护入口，不承载任何文件操作。"""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("关于 南枫批量改名")
+        self.setObjectName("aboutDialog")
+        self.setModal(True)
+        self.setMinimumSize(720, 470)
+        self.resize(920, 560)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(46, 32, 46, 38)
+        layout.setSpacing(24)
+
+        title = QLabel("关于")
+        title.setObjectName("aboutPageTitle")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        card = QFrame()
+        card.setObjectName("aboutCard")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(28, 26, 28, 24)
+        card_layout.setSpacing(0)
+
+        product_name = QLabel("南枫批量改名")
+        product_name.setObjectName("aboutProductName")
+        card_layout.addWidget(product_name)
+        product_summary = QLabel("批量文件改名与安全预览工作台。")
+        product_summary.setObjectName("aboutSummary")
+        card_layout.addWidget(product_summary)
+
+        card_layout.addWidget(self._divider())
+        card_layout.addWidget(self._section("版本信息", [
+            f"Desktop 版 {__version__}",
+            f"开发时间  {__build_time__}",
+        ]))
+        card_layout.addWidget(self._divider())
+        card_layout.addWidget(self._section("开发者信息", [
+            "开发者：席瑞",
+            "联系邮箱：nanzhufeng.studio@gmail.com",
+            "源码与更新：GitHub · nanzhufeng/NanfengBatchRenamer-Windows",
+            "版权所有 © 2026 席瑞",
+        ]))
+        layout.addWidget(card)
+        layout.addStretch(1)
+
+        self.setStyleSheet(
+            """
+            QDialog#aboutDialog { background: #f8fafc; color: #172033; font-family: \"Microsoft YaHei\"; }
+            #aboutPageTitle { font-size: 26px; font-weight: 700; background: transparent; }
+            #aboutCard { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 20px; }
+            #aboutProductName { font-size: 18px; font-weight: 700; background: transparent; }
+            #aboutSummary { color: #6b7280; font-size: 14px; background: transparent; padding-top: 4px; }
+            #aboutDivider { background: #e5e7eb; border: none; min-height: 1px; max-height: 1px; margin: 24px -28px; }
+            #aboutSectionTitle { font-size: 17px; font-weight: 700; background: transparent; }
+            #aboutSectionLine { font-size: 15px; background: transparent; padding-top: 5px; }
+            """
+        )
+
+    @staticmethod
+    def _divider() -> QFrame:
+        divider = QFrame()
+        divider.setObjectName("aboutDivider")
+        divider.setFrameShape(QFrame.Shape.HLine)
+        return divider
+
+    @staticmethod
+    def _section(title_text: str, lines: list[str]) -> QWidget:
+        section = QWidget()
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        title = QLabel(title_text)
+        title.setObjectName("aboutSectionTitle")
+        layout.addWidget(title)
+        for line in lines:
+            label = QLabel(line)
+            label.setObjectName("aboutSectionLine")
+            layout.addWidget(label)
+        return section
 
 
 class MainWindow(QMainWindow):
@@ -430,6 +516,7 @@ class MainWindow(QMainWindow):
         self.status_label.setAccessibleName("操作状态")
         self.count_label.setAccessibleName("文件数量统计")
         self.extension_all_btn.setAccessibleName("读取全部文件格式")
+        self.about_btn.setAccessibleName("打开关于软件信息")
 
         for extension, button in self.extension_buttons.items():
             button.setAccessibleName(f"筛选 {extension} 扩展名")
@@ -491,10 +578,12 @@ class MainWindow(QMainWindow):
         self.choose_folder_side_btn = QPushButton("选择文件夹")
         self.open_folder_btn = QPushButton("打开当前目录")
         self.open_logs_btn = QPushButton("打开日志")
+        self.about_btn = QPushButton("关于软件")
         self.choose_folder_side_btn.setObjectName("sideChooseButton")
         self.open_folder_btn.setObjectName("sideOpenButton")
         self.open_logs_btn.setObjectName("sideLogButton")
-        for btn in (self.choose_folder_side_btn, self.open_folder_btn, self.open_logs_btn):
+        self.about_btn.setObjectName("sideAboutButton")
+        for btn in (self.choose_folder_side_btn, self.open_folder_btn, self.open_logs_btn, self.about_btn):
             layout.addWidget(btn)
 
         layout.addSpacing(6)
@@ -513,8 +602,12 @@ class MainWindow(QMainWindow):
         self.choose_folder_side_btn.clicked.connect(self.choose_folder)
         self.open_folder_btn.clicked.connect(self.open_current_folder)
         self.open_logs_btn.clicked.connect(self.open_logs)
+        self.about_btn.clicked.connect(self.show_about)
         self.undo_btn.clicked.connect(self.undo_last)
         return panel
+
+    def show_about(self) -> None:
+        AboutDialog(self).exec()
 
     def _side_section(self, text: str) -> QLabel:
         label = QLabel(text)
@@ -1719,6 +1812,13 @@ class MainWindow(QMainWindow):
                 background: #ede9fe;
                 color: #5b21b6;
                 border-color: #a78bfa;
+            }
+            #sideAboutButton {
+                text-align: left;
+                padding-left: 18px;
+                background: #f8fafc;
+                color: #334155;
+                border-color: #cbd5e1;
             }
             #extensionFilter {
                 background: #e0f2f1;

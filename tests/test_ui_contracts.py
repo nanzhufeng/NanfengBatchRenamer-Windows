@@ -18,9 +18,10 @@ if str(SRC_ROOT) not in sys.path:
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QLabel, QScrollArea
+from PySide6.QtWidgets import QApplication, QFrame, QLabel, QScrollArea
 
-from batch_renamer.app import IconSpinBox, MainWindow
+from batch_renamer import __build_time__, __version__
+from batch_renamer.app import AboutDialog, IconSpinBox, MainWindow
 from batch_renamer.core.models import FileItem
 
 
@@ -62,6 +63,28 @@ class UiContractTests(unittest.TestCase):
             self.window.include_extension.setChecked(True)
             self.window.reset_rules()
             self.assertFalse(self.window.collect_settings().include_extension)
+
+    def test_about_dialog_uses_current_product_facts_and_is_reachable(self) -> None:
+        self.assertEqual(self.window.about_btn.accessibleName(), "打开关于软件信息")
+        dialog = AboutDialog(self.window)
+        self.assertEqual(dialog.windowTitle(), "关于 南枫批量改名")
+        self.assertTrue(dialog.isModal())
+        self.assertGreaterEqual(dialog.minimumWidth(), 720)
+        content = "\n".join(label.text() for label in dialog.findChildren(QLabel))
+        self.assertIn("南枫批量改名", content)
+        self.assertIn(f"Desktop 版 {__version__}", content)
+        self.assertIn(f"开发时间  {__build_time__}", content)
+        self.assertIn("nanzhufeng/NanfengBatchRenamer-Windows", content)
+        dialog.show()
+        self.app.processEvents()
+        card = dialog.findChild(QFrame, "aboutCard")
+        self.assertIsNotNone(card)
+        self.assertTrue(card.isVisible())
+        self.assertTrue(dialog.rect().contains(card.geometry()))
+        for label in card.findChildren(QLabel):
+            self.assertTrue(label.isVisible())
+            self.assertTrue(card.rect().contains(label.mapTo(card, label.rect().topLeft())))
+        dialog.close()
 
     def test_extension_rows_fit_without_overlap_at_supported_sizes(self) -> None:
         for removed in ("m2ts", "mts", "webm", "mpg", "mpeg"):
