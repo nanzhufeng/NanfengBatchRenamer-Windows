@@ -29,8 +29,8 @@ class PackagingContractTests(unittest.TestCase):
         self.assertIn("docs/images/app-preview.png", README.read_text(encoding="utf-8"))
         size = QImageReader(str(PREVIEW_IMAGE)).size()
         self.assertTrue(size.isValid())
-        self.assertEqual(size.width(), 1920)
-        self.assertLessEqual(size.height(), 1080)
+        self.assertEqual(size.width(), 1820)
+        self.assertEqual(size.height(), 1130)
 
 
 if __name__ == "__main__":

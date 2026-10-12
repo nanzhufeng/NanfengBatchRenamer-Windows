@@ -2,7 +2,7 @@
 
 这是一个 Windows 批量改名工具。当前版本重点是安全预览、事务式批量执行、冲突检查、点击复制、拖动多选，以及最近一次改名撤销。
 
-开发上下文、技术栈和目录结构见 [`docs/context.md`](docs/context.md)；稳定业务规则见 [`docs/domain-rules.md`](docs/domain-rules.md)；当前验证与遗留风险见 [`docs/CURRENT_HANDOFF.md`](docs/CURRENT_HANDOFF.md)。
+开发上下文、技术栈和目录结构见 [`docs/context.md`](docs/context.md)；稳定业务规则见 [`docs/domain-rules.md`](docs/domain-rules.md)；当前验证与遗留风险见 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)，详细交接见 [`docs/CURRENT_HANDOFF.md`](docs/CURRENT_HANDOFF.md)。
 
 平台说明：本仓库和 Release 仅对应 Windows 版本。应用内名称统一为“南枫批量改名”，仓库及发布资产使用 `Windows` 标识区分平台。
 
@@ -10,7 +10,9 @@
 
 ![南枫批量改名 Windows 界面预览](docs/images/app-preview.png)
 
-预览图由当前正式界面和固定脱敏演示数据生成，不包含用户文件或个人路径。
+预览图来自 Windows v1.2.0 的真实 Qt 工作台，视口 1820×1130，使用隔离演示文件，不包含用户文件或个人路径。
+
+[下载 Windows v1.2.0 安装包](https://github.com/nanzhufeng/NanfengBatchRenamer-Windows/releases/tag/v1.2.0)。安装包未签名，Windows 可能显示 SmartScreen 提示。
 
 ## 启动方式
 
@@ -47,7 +49,7 @@ NanfengBatchRenamer-Windows-v1.1.6-Setup.exe.sha256
 
 ## 第一版支持
 
-- 选择文件夹并读取当前目录文件。
+- 选择文件夹并读取当前目录文件；勾选“包含子文件夹”后重新读取，可包含所有层级的文件，各文件仍在原目录改名和撤销。
 - 文件夹路径输入后，可按回车直接读取文件。
 - 通过扩展名标签逐个选择筛选项，序列/图片格式和视频格式分组显示。
 - 扩展名筛选里的“全部”表示不限制扩展名，会读取当前目录下真实全部文件格式。
@@ -74,14 +76,13 @@ NanfengBatchRenamer-Windows-v1.1.6-Setup.exe.sha256
 ## 第一版暂不支持
 
 - 文件夹改名。
-- 子文件夹递归读取。
 - 正则替换。
 - EXIF / 元数据读取。
 - 序列帧智能识别。
 
 ## 建议测试流程
 
-1. 先选择 `test_samples` 文件夹。
+1. 在新建临时文件夹中放入测试文件副本，再选择该临时文件夹；不要对项目的 `test_samples` 或真实素材执行测试改名。
 2. 点击“读取文件”。
 3. 在“添加文本”里勾选“前缀”，输入 `shot_`。
 4. 勾选“自动编号”，保持默认 `0001` 起始。

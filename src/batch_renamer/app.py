@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QEvent, QPoint, QTimer, Qt
-from PySide6.QtGui import QColor, QIcon, QPainter
+from PySide6.QtGui import QColor, QIcon, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractSpinBox,
     QApplication,
@@ -119,7 +119,7 @@ class IconSpinBox(QSpinBox):
         self._layout_arrow_buttons()
 
     def _layout_arrow_buttons(self) -> None:
-        button_width = max(8, ceil(18 * self._ui_scale))
+        button_width = max(12, ceil(24 * self._ui_scale))
         gap = max(1, ceil(2 * self._ui_scale))
         half_height = max((self.height() - gap * 2) // 2, max(5, ceil(10 * self._ui_scale)))
         x = self.width() - button_width - gap
@@ -141,18 +141,19 @@ class SpinArrowButton(QToolButton):
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QColor("#64748b"))
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(QColor("#61707c"), max(0.9, 1.2 * self._ui_scale), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         center_x = self.width() // 2
         center_y = self.height() // 2
-        vertical = max(2, ceil(3 * self._ui_scale))
-        horizontal = max(3, ceil(4 * self._ui_scale))
-        lower = max(1, ceil(2 * self._ui_scale))
+        vertical = max(1, ceil(2 * self._ui_scale))
+        horizontal = max(2, ceil(3 * self._ui_scale))
+        lower = max(1, ceil(self._ui_scale))
         if self.points_up:
             points = [QPoint(center_x, center_y - vertical), QPoint(center_x - horizontal, center_y + lower), QPoint(center_x + horizontal, center_y + lower)]
         else:
             points = [QPoint(center_x, center_y + vertical), QPoint(center_x - horizontal, center_y - lower), QPoint(center_x + horizontal, center_y - lower)]
-        painter.drawPolygon(points)
+        painter.drawLine(points[1], points[0])
+        painter.drawLine(points[0], points[2])
 
 
 class ComboArrowGlyph(QWidget):
@@ -168,14 +169,15 @@ class ComboArrowGlyph(QWidget):
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QColor("#64748b"))
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(QColor("#61707c"), max(1, 1.5 * self._ui_scale), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         center_x = self.width() // 2
         center_y = self.height() // 2
         vertical = max(2, ceil(3 * self._ui_scale))
         horizontal = max(3, ceil(5 * self._ui_scale))
         points = [QPoint(center_x, center_y + vertical), QPoint(center_x - horizontal, center_y - vertical), QPoint(center_x + horizontal, center_y - vertical)]
-        painter.drawPolygon(points)
+        painter.drawLine(points[1], points[0])
+        painter.drawLine(points[0], points[2])
 
 
 class IconComboBox(QComboBox):
@@ -645,8 +647,7 @@ class MainWindow(QMainWindow):
         read_btn.setObjectName("orangeButton")
 
         self.include_subfolders = QCheckBox("包含子文件夹")
-        self.include_subfolders.setEnabled(False)
-        self.include_subfolders.setToolTip("第一版先只读取当前目录文件。")
+        self.include_subfolders.setToolTip("勾选后点击读取文件，包含所有层级的子文件夹；文件仍在各自原目录改名。")
 
         layout.addWidget(self._source_label("文件夹"), 0, 0)
         layout.addWidget(self.path_edit, 0, 1, 1, 4)
@@ -1196,11 +1197,15 @@ class MainWindow(QMainWindow):
             self.path_edit.setText(folder)
 
     def load_files(self) -> None:
-        folder = Path(self.path_edit.text().strip())
+        path_text = self.path_edit.text().strip()
+        if not path_text:
+            self._message("warning", "请选择来源文件夹", "请先选择或输入要读取的文件夹路径。")
+            return
+        folder = Path(path_text)
         try:
-            self.items = scan_files(folder, self._selected_extension_filter())
+            self.items = scan_files(folder, self._selected_extension_filter(), include_subfolders=self.include_subfolders.isChecked())
         except (OSError, ValueError) as exc:
-            QMessageBox.warning(self, "读取失败", str(exc))
+            self._message("warning", "读取失败", str(exc))
             return
         self.refresh_table()
         self.set_status(f"已读取 {len(self.items)} 个文件。")
@@ -1235,6 +1240,7 @@ class MainWindow(QMainWindow):
         )
 
     def preview(self) -> None:
+        self._live_preview_timer.stop()
         if not self.items:
             self.set_status("请先读取文件。", "warning")
             return
@@ -1247,6 +1253,10 @@ class MainWindow(QMainWindow):
         self._update_buttons()
 
     def execute_rename(self) -> None:
+        self._live_preview_timer.stop()
+        build_preview(self.items, self.collect_settings())
+        self.refresh_table()
+        self._update_buttons()
         plans = build_plans(self.items)
         if not plans:
             self.set_status("没有可执行的改名项。", "warning")
@@ -1255,8 +1265,8 @@ class MainWindow(QMainWindow):
             self.set_status("存在冲突或错误，不能执行。", "error")
             return
 
-        reply = QMessageBox.question(
-            self,
+        reply = self._message(
+            "question",
             "确认执行改名",
             f"将改名 {len(plans)} 个文件。\n\n目标路径为当前文件所在目录。"
             "\n任一步失败将尝试恢复整批原文件。\n完整成功后才写入撤销记录。",
@@ -1283,21 +1293,21 @@ class MainWindow(QMainWindow):
         self.refresh_table()
         if self.executor.last_recovery_file:
             self.set_status(f"执行失败且回滚不完整；恢复清单：{self.executor.last_recovery_file}", "error")
-            QMessageBox.critical(
-                self,
+            self._message(
+                "critical",
                 "需要恢复文件",
                 f"批次执行失败，部分文件未能自动恢复。\n\n恢复清单：\n{self.executor.last_recovery_file}",
             )
         elif fail_count:
             self.set_status(f"执行失败：已恢复整批原文件，失败 {fail_count} 个。", "warning")
-            QMessageBox.warning(self, "执行失败", "改名没有完整完成，已恢复整批原文件。")
+            self._message("warning", "执行失败", "改名没有完整完成，已恢复整批原文件。")
         else:
             self.set_status(f"执行完成：成功 {ok_count} 个。", "success")
-            QMessageBox.information(self, "执行完成", f"成功改名 {ok_count} 个文件。")
+            self._message("information", "执行完成", f"成功改名 {ok_count} 个文件。")
         self._update_buttons()
 
     def undo_last(self) -> None:
-        reply = QMessageBox.question(self, "确认撤销", "将尝试撤销最近一次成功改名。是否继续？")
+        reply = self._message("question", "确认撤销", "将尝试撤销最近一次成功改名。是否继续？")
         if reply != QMessageBox.StandardButton.Yes:
             return
         results = self.executor.undo_last()
@@ -1316,13 +1326,13 @@ class MainWindow(QMainWindow):
         self.refresh_table()
         if self.executor.last_recovery_file:
             self.set_status(f"撤销失败且回滚不完整；恢复清单：{self.executor.last_recovery_file}", "error")
-            QMessageBox.critical(self, "撤销需要恢复", f"恢复清单：\n{self.executor.last_recovery_file}")
+            self._message("critical", "撤销需要恢复", f"恢复清单：\n{self.executor.last_recovery_file}")
         elif fail_count:
             self.set_status("撤销失败：已恢复到撤销前状态。", "warning")
-            QMessageBox.warning(self, "撤销失败", "撤销没有完整完成，已恢复到撤销前状态。")
+            self._message("warning", "撤销失败", "撤销没有完整完成，已恢复到撤销前状态。")
         else:
             self.set_status(f"撤销完成：成功 {ok_count} 个。", "success")
-            QMessageBox.information(self, "撤销结果", f"成功撤销 {ok_count} 个文件。")
+            self._message("information", "撤销结果", f"成功撤销 {ok_count} 个文件。")
         self._update_buttons()
 
     def set_all_selected(self, selected: bool) -> None:
@@ -1330,12 +1340,14 @@ class MainWindow(QMainWindow):
             item.selected = selected
         self.refresh_table()
         self._update_buttons()
+        self.live_preview()
 
     def invert_selected(self) -> None:
         for item in self.items:
             item.selected = not item.selected
         self.refresh_table()
         self._update_buttons()
+        self.live_preview()
 
     def reset_find_rule(self, update_status: bool = True) -> None:
         self.find_enabled.setChecked(False)
@@ -1441,6 +1453,7 @@ class MainWindow(QMainWindow):
         if self._updating_table or not self.items:
             return
         self._live_preview_timer.start()
+        self._update_buttons()
 
     def _apply_live_preview(self) -> None:
         if self._updating_table or not self.items:
@@ -1456,8 +1469,9 @@ class MainWindow(QMainWindow):
         self._update_buttons()
 
     def open_current_folder(self) -> None:
-        folder = Path(self.path_edit.text().strip())
-        if folder.exists():
+        path_text = self.path_edit.text().strip()
+        folder = Path(path_text)
+        if path_text and folder.is_dir():
             os.startfile(folder)
         else:
             self.set_status("当前文件夹不存在。", "error")
@@ -1525,6 +1539,7 @@ class MainWindow(QMainWindow):
             self._sort_ascending = True
 
         self.items.sort(key=lambda item: self._sort_key(item, column), reverse=not self._sort_ascending)
+        build_preview(self.items, self.collect_settings())
         order = Qt.SortOrder.AscendingOrder if self._sort_ascending else Qt.SortOrder.DescendingOrder
         self.table.horizontalHeader().setSortIndicator(column, order)
         self.refresh_table()
@@ -1586,6 +1601,7 @@ class MainWindow(QMainWindow):
             self._updating_table = False
         self._update_counts()
         self._update_buttons()
+        self.live_preview()
 
     def _update_counts(self) -> None:
         selected = sum(1 for item in self.items if item.selected)
@@ -1602,7 +1618,7 @@ class MainWindow(QMainWindow):
         self.select_all_btn.setEnabled(has_items)
         self.invert_btn.setEnabled(has_items)
         self.clear_btn.setEnabled(has_items)
-        self.execute_btn.setEnabled(has_plan and not blocked)
+        self.execute_btn.setEnabled(has_plan and not blocked and not self._live_preview_timer.isActive())
 
     def set_status(self, text: str, variant: str = "normal") -> None:
         self._status_variant = variant
@@ -1984,6 +2000,10 @@ class MainWindow(QMainWindow):
             }
             """
         )
+
+
+# UI implementation shares all existing business operations through OriginalWindow.
+from .ui.workbench import WorkbenchWindow as MainWindow, AboutDialog
 
 
 def run() -> int:

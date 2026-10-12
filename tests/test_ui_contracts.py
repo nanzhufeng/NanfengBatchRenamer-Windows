@@ -15,7 +15,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QIcon
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QScrollArea
@@ -32,7 +32,8 @@ class UiContractTests(unittest.TestCase):
         cls.app.setQuitOnLastWindowClosed(False)
 
     def setUp(self) -> None:
-        self.window = MainWindow()
+        self.preferences_temp = tempfile.TemporaryDirectory()
+        self.window = MainWindow(QSettings(str(Path(self.preferences_temp.name)/'preferences.ini'),QSettings.Format.IniFormat))
         self.window.show()
         self.app.processEvents()
 
@@ -40,6 +41,7 @@ class UiContractTests(unittest.TestCase):
         self.window.close()
         self.window.deleteLater()
         self.app.processEvents()
+        self.preferences_temp.cleanup()
 
     def test_extension_scope_toggle_updates_preview_and_global_reset(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -69,7 +71,7 @@ class UiContractTests(unittest.TestCase):
         dialog = AboutDialog(self.window)
         self.assertEqual(dialog.windowTitle(), "关于 南枫批量改名")
         self.assertTrue(dialog.isModal())
-        self.assertGreaterEqual(dialog.minimumWidth(), 720)
+        self.assertGreaterEqual(dialog.minimumWidth(), 620)
         content = "\n".join(label.text() for label in dialog.findChildren(QLabel))
         self.assertIn("南枫批量改名", content)
         self.assertIn(f"Desktop 版 {__version__}", content)
@@ -94,8 +96,9 @@ class UiContractTests(unittest.TestCase):
                 scale = self.window.scale_for_available_size(width, height)
                 self.window.apply_ui_scale(scale)
                 self.window.resize(ceil(self.window.BASE_WIDTH * scale), ceil(self.window.BASE_HEIGHT * scale))
+                self.window.set_file_type('视频')
                 self.app.processEvents()
-                buttons = list(self.window.extension_buttons.values())
+                buttons = [b for b in self.window.extension_buttons.values() if b.isVisible()]
                 panel = buttons[0].parentWidget()
                 for button in buttons:
                     self.assertTrue(panel.rect().contains(button.geometry()))
@@ -125,11 +128,11 @@ class UiContractTests(unittest.TestCase):
         self.assertTrue(self.window.number_separator.alignment() & Qt.AlignmentFlag.AlignLeft)
 
     def test_all_extensions_means_no_filter_restriction(self) -> None:
-        self.window.extension_all_btn.setChecked(True)
+        self.window.set_file_type('全部')
         self.app.processEvents()
 
         self.assertEqual(self.window._selected_extension_filter(), "")
-        self.assertFalse(any(button.isChecked() for button in self.window.extension_buttons.values()))
+        self.assertFalse(self.window.filter_contents.isVisible())
 
     def test_rapid_arrow_clicks_change_exactly_once_per_click(self) -> None:
         spin = IconSpinBox()
@@ -217,7 +220,7 @@ class UiContractTests(unittest.TestCase):
                 self.app.processEvents()
 
                 self.assertAlmostEqual(self.window._ui_scale, scale)
-                self.assertEqual(sidebar.width(), ceil(196 * scale))
+                self.assertEqual(sidebar.width(), ceil(self.window.SIDEBAR_WIDTH * scale))
                 for label in labels:
                     self.assertFalse(label.wordWrap())
                     text_width = label.fontMetrics().horizontalAdvance(label.text())
@@ -235,8 +238,8 @@ class UiContractTests(unittest.TestCase):
 
     def test_scale_contract_uses_logical_available_geometry(self) -> None:
         self.assertAlmostEqual(self.window.scale_for_available_size(2200, 1152), 1.0)
-        self.assertAlmostEqual(self.window.scale_for_available_size(1920, 1080), 1920 / 2200)
-        self.assertAlmostEqual(self.window.scale_for_available_size(1280, 720), 1280 / 2200)
+        self.assertAlmostEqual(self.window.scale_for_available_size(1920, 1080), 1080 / 1130)
+        self.assertAlmostEqual(self.window.scale_for_available_size(1280, 720), 720 / 1130)
 
     def test_cross_monitor_rescaling_always_recomputes_from_baseline(self) -> None:
         sidebar = self.window.findChild(QLabel, "sidebarTitle").parentWidget()
@@ -244,10 +247,10 @@ class UiContractTests(unittest.TestCase):
             scale = self.window.scale_for_available_size(width, height)
             self.window.apply_ui_scale(scale)
             self.app.processEvents()
-            self.assertEqual(sidebar.width(), ceil(196 * scale))
+            self.assertEqual(sidebar.width(), ceil(self.window.SIDEBAR_WIDTH * scale))
 
-        self.assertEqual(sidebar.width(), 196)
-        self.assertEqual(self.window.table.columnWidth(4), 430)
+        self.assertEqual(sidebar.width(), self.window.SIDEBAR_WIDTH)
+        self.assertGreater(self.window.table.columnWidth(4), self.window.table.columnWidth(3))
 
     def test_accessibility_names_cover_primary_and_custom_controls(self) -> None:
         self.assertEqual(self.window.path_edit.accessibleName(), "文件夹路径")

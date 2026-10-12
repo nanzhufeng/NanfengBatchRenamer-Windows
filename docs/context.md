@@ -6,8 +6,8 @@
 - 平台：Windows 10/11 桌面
 - Git 根目录：`C:\Users\Administrator\Documents\00-日常问答\南枫批量改名`
 - GitHub：`nanzhufeng/NanfengBatchRenamer-Windows`（私有）
-- 当前正式基准：标签与 GitHub Release `v1.1.4`
-- 正式资产：`NanfengBatchRenamer-Windows-v1.1.4-Setup.exe` 与对应 SHA-256 文件
+- 当前构建版本：Windows `v1.2.0`；发布与验收状态见 `PROJECT_STATUS.md`。
+- 安装包：`NanfengBatchRenamer-Windows-v1.2.0-Setup.exe`，校验摘要由构建脚本生成并在交接中记录。
 
 ## 第一用户任务
 
