@@ -3,7 +3,7 @@
 ## Verified
 - Last verified: 2026-10-13 +08:00
 - Branch: main
-- Code baseline: v1.2.0 发布源码（提交与远端状态见本轮交接）
+- Code baseline: v1.2.0 / 5f169776b735ad3e6f90290d44ad7d13e9fd97aa（main后续仅同步发布回执）
 - Status: Active
 - Scope: Windows 源码工作台、真实控件、隔离临时文件改名/撤销、BAT启动。详细恢复见 CURRENT_HANDOFF.md。
 
@@ -22,7 +22,7 @@
 | Native rendering | PASS | artifacts/workbench-acceptance/main-window.png、settings.png、about.png |
 | BAT launch | PASS | 源码窗口真实启动并响应，验证后正常关闭 |
 | Package | PASS | v1.2.0 PyInstaller EXE及Inno Setup安装包；实际EXE窗口响应正常；发布合同14/14；EXE和安装包NotSigned |
-| Release | PENDING | 正在提交源码、上传安装包并回验远端哈希 |
+| Release | PASS | GitHub正式Release v1.2.0；安装包49,057,108字节；远端重下载SHA-256与本地一致 |
 
 ## In Progress / Blocked
 无。
@@ -33,4 +33,4 @@
 
 ## Next
 - 用户使用启动_南枫批量改名.bat验收。
-- 完成GitHub上传与下载哈希回验。
+- 用户从GitHub Release下载安装v1.2.0。

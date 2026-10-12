@@ -4,7 +4,9 @@
 
 - 版本统一更新为1.2.0；47项测试、compileall、图标校验、发布合同14/14、PyInstaller和Inno Setup构建通过。冻结EXE已创建“南枫批量改名”窗口且Responding=True。
 - 安装包SHA-256：`0d03a15cb1f89b545702e634549243803c8b37597ff9054a34440d26334cd9a1`；EXE和Setup均为NotSigned，README和Release明确未签名。
-- README预览已更新到当前实际Qt工作台；未覆盖本机已安装软件或修改用户文件。GitHub上传和下载回验随后记录。
+- README预览已更新到当前实际Qt工作台；未覆盖本机已安装软件或修改用户文件。
+- 正式Release：[v1.2.0](https://github.com/nanzhufeng/NanfengBatchRenamer-Windows/releases/tag/v1.2.0)，非草稿、非预发布；标签指向源码提交 `5f169776b735ad3e6f90290d44ad7d13e9fd97aa`。
+- 唯一附件为 `NanfengBatchRenamer-Windows-v1.2.0-Setup.exe`，49,057,108字节；已从GitHub重新下载，SHA-256与上述本地冻结安装包完全一致。未进行本机覆盖安装，真实跨屏DPI仍待验证。
 
 ## 2026-10-12 细节收尾与风险复查
 
